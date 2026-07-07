@@ -11,10 +11,11 @@ public class MovementScript : MonoBehaviour {
 	public Font uiFont;
 	public int uiFontSize = 22;
 	private int numMotors = 4;
+    public bool showFullTelemetry = true;
+    public bool showLocationTelemetry = true;
 	public float maxSPIncreaseAlt = 9f;    // setpoint ramping for altitude
 	public float maxSPIncreaseVel = 5f; // same for velocity
     public float maxSPIcreaseLoc = 10f; // same for pos
-	public float[] motorThrusts = new float[4];
 	private float maxThrustPerMotor = 8f;
 	public bool velocityControlMode = false;
 	public bool rotationControlMode = false;
@@ -23,15 +24,16 @@ public class MovementScript : MonoBehaviour {
 	public float ctrlModeAscentSpeed = 0.03f;
     public float rotCtrlModeRotAmt = 25f;
 
-	// state control and tracking
-	public float altitude = 1f;
-	public Quaternion currentRotation = new Quaternion();
-	public Quaternion targetRotation = new Quaternion();
-	public Vector3 targetLocation = new Vector3(0f, 1f, 0f);
-	public Vector3 currentLocation = new Vector3();
+    // state control and tracking
+    private float altitude = 1f;
+    private float targetAltitude = 1f;
+    private Quaternion currentRotation = new Quaternion();
+	private Quaternion targetRotation = new Quaternion();
+	private Vector3 currentLocation = new Vector3();
+    public Vector3 targetLocation = new Vector3(0f, 1f, 0f);
 
-	// --- PID STUFF
-	public float[] rollPitchInnerPIDCoeffs = new float[1];
+    // --- PID STUFF
+    public float[] rollPitchInnerPIDCoeffs = new float[1];
 	public float[] rollPitchOuterPIDCoeffs = new float[3];
     public float[] altPIDCoeffs = new float[4];
     public float[] thrustPIDCoeffs = new float[2];
@@ -51,8 +53,9 @@ public class MovementScript : MonoBehaviour {
 	PIDFController zController = new PIDFController(4f, 0f, 8f);
 	public float xzLocCoeff = 0.1f;
 
-	// tracking for telemetry
-	private float rollPIDCalc = 0f;
+    // tracking for telemetry
+    private float[] motorThrusts = new float[4];
+    private float rollPIDCalc = 0f;
 	private float pitchPIDCalc = 0f;
     private float targetThrustAltitude = 0f;            // the thrust needed to control altitude
     private float targetAngVelRoll = 0f;                // the angular velocity (rad) needed to control roll
@@ -67,7 +70,6 @@ public class MovementScript : MonoBehaviour {
     private float targetVZ = 0f;
     private float vx = 0f;
     private float vz = 0f;
-    private float targetAltitude = 1f;
 	private Vector3 targetLocationLocal = new Vector3();
 
     private void Start() {
@@ -138,7 +140,8 @@ public class MovementScript : MonoBehaviour {
             if (Keyboard.current.spaceKey.isPressed) targetAltitude += ctrlModeAscentSpeed;
             if (Keyboard.current.shiftKey.isPressed) targetAltitude -= ctrlModeAscentSpeed;
         } else if (positionControlMode) {
-
+            // home button
+            if (Keyboard.current.hKey.isPressed) targetLocation = new Vector3(0f, 1f, 0f);
 		}
     }
 
@@ -198,63 +201,69 @@ public class MovementScript : MonoBehaviour {
 	}
 
 	void OnGUI() {
-		// col 1
-		GUI.BeginGroup(new Rect(10f, 10f, 350f, 140f), styleGrayBG);
-		GUI.Label(new Rect(10, 10, 300, 25), "TargThrust (Alt): " + targetThrustAltitude.ToString("F2"), styleGreenText);
-		for (int i = 0; i < numMotors; i++) {
-            GUI.Label(new Rect(10, 10 + (i+1) * 25, 300, 25), "M" + i + " thrust: " + motorThrusts[i].ToString("F2"), styleGreenText);
+        if (showFullTelemetry) {
+            // col 1
+            GUI.BeginGroup(new Rect(10f, 10f, 350f, 140f), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 300, 25), "TargThrust (Alt): " + targetThrustAltitude.ToString("F2"), styleGreenText);
+            for (int i = 0; i < numMotors; i++)
+            {
+                GUI.Label(new Rect(10, 10 + (i + 1) * 25, 300, 25), "M" + i + " thrust: " + motorThrusts[i].ToString("F2"), styleGreenText);
+            }
+            GUI.EndGroup();
+
+            GUI.BeginGroup(new Rect(10, 200, 350, 140), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 200, 20), "Roll: " + currentRotation.eulerAngles.z.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Pitch: " + currentRotation.eulerAngles.x.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "Yaw: " + currentRotation.eulerAngles.y.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 85, 200, 20), "Target Pitch: " + targetRotationZ.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 110, 200, 20), "Target Roll: " + targetRotationX.ToString("F2"), styleGreenText);
+            GUI.EndGroup();
+
+            GUI.BeginGroup(new Rect(10, 360, 350, 90), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 200, 20), "RollErr (rad): " + errVec.z.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "PitchErr (rad): " + errVec.x.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "YawErr (rad): " + errVec.y.ToString("F3"), styleGreenText);
+            GUI.EndGroup();
+
+            GUI.BeginGroup(new Rect(10, 460, 350, 70), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 200, 20), "Roll Target AngVel: " + targetAngVelRoll.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Pitch Target AngVel: " + targetAngVelPitch.ToString("F2"), styleGreenText);
+            GUI.EndGroup();
+
+            GUI.BeginGroup(new Rect(10, 550, 350, 70), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 200, 20), "Roll Thrust: " + rollPIDCalc.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Pitch Thrust: " + pitchPIDCalc.ToString("F3"), styleGreenText);
+            GUI.EndGroup();
+
+            // col 2
+            GUI.BeginGroup(new Rect(400, 10, 350, 90), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 200, 20), "Target Alt: " + targetAltitude.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Ramped Target Alt: " + currentTargetAltitude.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "Current Alt: " + altitude.ToString("F2"), styleGreenText);
+            GUI.EndGroup();
+
+            GUI.BeginGroup(new Rect(400, 120, 350, 170), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 200, 20), "vx: " + vx.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "vz: " + vz.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "target vx: " + targetVX.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 85, 200, 20), "target vz: " + targetVZ.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 110, 200, 20), "ramped target vx: " + currentTargetVX.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 135, 200, 20), "ramped target vz: " + currentTargetVZ.ToString("F3"), styleGreenText);
+            GUI.EndGroup();
         }
-		GUI.EndGroup();
 
-        GUI.BeginGroup(new Rect(10, 200, 350, 140), styleGrayBG);
-        GUI.Label(new Rect(10, 10, 200, 20), "Roll: " + currentRotation.eulerAngles.z.ToString("F2"), styleGreenText);
-		GUI.Label(new Rect(10, 35, 200, 20), "Pitch: " + currentRotation.eulerAngles.x.ToString("F2"), styleGreenText);
-		GUI.Label(new Rect(10, 60, 200, 20), "Yaw: " + currentRotation.eulerAngles.y.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 85, 200, 20), "Target Pitch: " + targetRotationZ.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 110, 200, 20), "Target Roll: " + targetRotationX.ToString("F2"), styleGreenText);
-        GUI.EndGroup();
-
-        GUI.BeginGroup(new Rect(10, 360, 350, 90), styleGrayBG);
-        GUI.Label(new Rect(10, 10, 200, 20), "RollErr (rad): " + errVec.z.ToString("F3"), styleGreenText);
-		GUI.Label(new Rect(10, 35, 200, 20), "PitchErr (rad): " + errVec.x.ToString("F3"), styleGreenText);
-		GUI.Label(new Rect(10, 60, 200, 20), "YawErr (rad): " + errVec.y.ToString("F3"), styleGreenText);
-        GUI.EndGroup();
-
-        GUI.BeginGroup(new Rect(10, 460, 350, 70), styleGrayBG);
-        GUI.Label(new Rect(10, 10, 200, 20), "Roll Target AngVel: " + targetAngVelRoll.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 35, 200, 20), "Pitch Target AngVel: " + targetAngVelPitch.ToString("F2"), styleGreenText);
-        GUI.EndGroup();
-
-        GUI.BeginGroup(new Rect(10, 550, 350, 70), styleGrayBG);
-        GUI.Label(new Rect(10, 10, 200, 20), "Roll Thrust: " + rollPIDCalc.ToString("F3"), styleGreenText);
-        GUI.Label(new Rect(10, 35, 200, 20), "Pitch Thrust: " + pitchPIDCalc.ToString("F3"), styleGreenText);
-        GUI.EndGroup();
-
-		// col 2
-        GUI.BeginGroup(new Rect(400, 10, 350, 90), styleGrayBG);
-        GUI.Label(new Rect(10, 10, 200, 20), "Target Alt: " + targetAltitude.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 35, 200, 20), "Ramped Target Alt: " + currentTargetAltitude.ToString("F3"), styleGreenText);
-        GUI.Label(new Rect(10, 60, 200, 20), "Current Alt: " + altitude.ToString("F2"), styleGreenText);
-        GUI.EndGroup();
-
-        GUI.BeginGroup(new Rect(400, 120, 350, 170), styleGrayBG);
-		GUI.Label(new Rect(10, 10, 200, 20), "vx: " + vx.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 35, 200, 20), "vz: " + vz.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 60, 200, 20), "target vx: " + targetVX.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 85, 200, 20), "target vz: " + targetVZ.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 110, 200, 20), "ramped target vx: " + currentTargetVX.ToString("F3"), styleGreenText);
-        GUI.Label(new Rect(10, 135, 200, 20), "ramped target vz: " + currentTargetVZ.ToString("F3"), styleGreenText);
-        GUI.EndGroup();
-
-        // col 3
-        GUI.BeginGroup(new Rect(790, 10, 350, 170), styleGrayBG);
-        GUI.Label(new Rect(10, 10, 200, 20), "x: " + currentLocation.x.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 35, 200, 20), "y: " + currentLocation.y.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 60, 200, 20), "z: " + currentLocation.z.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 85, 200, 20), "target x: " + targetLocation.x.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 110, 200, 20), "target y: " + targetLocation.y.ToString("F2"), styleGreenText);
-        GUI.Label(new Rect(10, 135, 200, 20), "target z: " + targetLocation.z.ToString("F2"), styleGreenText);
-        GUI.EndGroup();
+        if (showLocationTelemetry) {
+            // col 3
+            GUI.BeginGroup(new Rect(790, 10, 350, 170), styleGrayBG);
+            GUI.Label(new Rect(10, 10, 200, 20), "x: " + currentLocation.x.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "y: " + currentLocation.y.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "z: " + currentLocation.z.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 85, 200, 20), "target x: " + targetLocation.x.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 110, 200, 20), "target y: " + targetLocation.y.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 135, 200, 20), "target z: " + targetLocation.z.ToString("F2"), styleGreenText);
+            GUI.EndGroup();
+        }
+        
     }
 
 	void setMotorPower(float power, int index) {
