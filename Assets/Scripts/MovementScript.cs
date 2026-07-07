@@ -8,6 +8,8 @@ public class MovementScript : MonoBehaviour {
 	public Transform[] motors;
 	private GUIStyle styleGreenText = new GUIStyle();
 	private GUIStyle styleGrayBG = new GUIStyle();
+	public Font uiFont;
+	public int uiFontSize = 22;
 	private int numMotors = 4;
 	public float maxSPIncrease = 9f;    // setpoint ramping for altitude
 	public float[] motorThrusts = new float[4];
@@ -24,10 +26,10 @@ public class MovementScript : MonoBehaviour {
 	public float[] rollPitchOuterPIDCoeffs;
 	PIDFController altitudeController = new PIDFController(20f, 0f, 8f);
 	PIDFController thrustController = new PIDFController(kp: 0.3f, kf: 0.4596f);
-	PIDFController rollOuterController = new PIDFController(1f, 0f, 0.1f);
-    PIDFController pitchOuterController = new PIDFController(1f, 0f, 0.1f);
-    PIDFController rollInnerController = new PIDFController(kp: 1f, kf: 0f);
-    PIDFController pitchInnerController = new PIDFController(kp: 1f, kf: 0f);
+	PIDFController rollOuterController = new PIDFController(10f, 0f, 2f);
+    PIDFController pitchOuterController = new PIDFController(10f, 0f, 2f);
+    PIDFController rollInnerController = new PIDFController(kp: 0.04f);
+    PIDFController pitchInnerController = new PIDFController(kp: 0.04f);
 	private Vector3 errVec = new Vector3();
 	public float[] altPIDCoeffs = new float[4];
 	public float[] thrustPIDCoeffs = new float[2];
@@ -48,7 +50,8 @@ public class MovementScript : MonoBehaviour {
 		styleGrayBG.padding = new RectOffset(10, 10, 10, 10);
 
 		styleGreenText.normal.textColor = Color.green;
-		styleGreenText.fontSize = 22;
+		styleGreenText.font = uiFont;
+		styleGreenText.fontSize = uiFontSize;
 	}
 
 	// lower frequency
@@ -61,9 +64,7 @@ public class MovementScript : MonoBehaviour {
         thrustController.Kf = thrustPIDCoeffs[1];
 
         rollInnerController.Kp = rollPitchInnerPIDCoeffs[0];
-		rollInnerController.Kf = rollPitchInnerPIDCoeffs[1];
         pitchInnerController.Kp = rollPitchInnerPIDCoeffs[0];
-        pitchInnerController.Kf = rollPitchInnerPIDCoeffs[1];
 
         rollOuterController.Kp = rollPitchOuterPIDCoeffs[0];
 		rollOuterController.Ki = rollPitchOuterPIDCoeffs[1];
