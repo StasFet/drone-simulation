@@ -366,19 +366,24 @@ MonoBehaviour:
   - {fileID: 1064847447}
   uiFont: {fileID: 12800000, guid: 463a6eb659483f745a2b8b8ee6562c5d, type: 3}
   uiFontSize: 20
-  maxSPIncrease: 9
+  maxSPIncreaseAlt: 7
   maxSPIncreaseVel: 5
+  maxSPIcreaseLoc: 7
   motorThrusts:
   - 0
   - 0
   - 0
   - 0
+  velocityControlMode: 0
+  rotationControlMode: 0
+  positionControlMode: 0
+  velCtrlModeMaxSpeed: 8
+  ctrlModeAscentSpeed: 0.03
   altitude: 1
   currentRotation: {x: 0, y: 0, z: 0, w: 0}
   targetRotation: {x: 0, y: 0, z: 0, w: 0}
-  targetAltitude: 1
-  targetVX: 0
-  targetVZ: 0
+  targetLocation: {x: 0, y: 1, z: 0}
+  currentLocation: {x: 0, y: 0, z: 0}
   rollPitchInnerPIDCoeffs:
   - 0.04
   - 0
@@ -397,7 +402,12 @@ MonoBehaviour:
   - 40
   - 0
   - 8
-  vxRotationPCoeff: 0.3
+  xzPIDCoeffs:
+  - 4
+  - 0
+  - 8
+  vxRotationPCoeff: 0.1
+  xzLocCoeff: 0.1
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
