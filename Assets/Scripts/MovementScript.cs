@@ -76,8 +76,8 @@ public class MovementScript : MonoBehaviour {
         targetRotation = Quaternion.Euler(0f, 0f, 0f);
 		if (Keyboard.current.wKey.isPressed) targetRotation = Quaternion.Euler(25f, 0f, 0f) ;
 		else if (Keyboard.current.sKey.isPressed) targetRotation = Quaternion.Euler(-25f, 0f, 0f);
-		if (Keyboard.current.aKey.isPressed) targetRotation = Quaternion.Euler(0f, 0f, -25f) * targetRotation;
-		else if (Keyboard.current.dKey.isPressed) targetRotation = Quaternion.Euler(0f, 0f, 25f) * targetRotation;
+		if (Keyboard.current.aKey.isPressed) targetRotation = Quaternion.Euler(0f, 0f, 25f) * targetRotation;
+		else if (Keyboard.current.dKey.isPressed) targetRotation = Quaternion.Euler(0f, 0f, -25f) * targetRotation;
 
 		// control altitude
 		if (Keyboard.current.spaceKey.isPressed) targetAltitude += 0.05f;

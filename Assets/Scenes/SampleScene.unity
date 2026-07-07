@@ -375,12 +375,12 @@ MonoBehaviour:
   targetRotation: {x: 0, y: 0, z: 0, w: 0}
   targetAltitude: 1
   rollPitchInnerPIDCoeffs:
-  - 0.3
+  - 0.08
   - 0
   rollPitchOuterPIDCoeffs:
-  - 0.01
+  - 10
   - 0
-  - 0
+  - 2
   altPIDCoeffs:
   - 20
   - 0
