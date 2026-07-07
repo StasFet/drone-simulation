@@ -1,6 +1,4 @@
-﻿using UnityEngine;
-
-public class PIDFController {
+﻿public class PIDFController {
     public float Kp;
     public float Ki;
     public float Kd;
@@ -23,15 +21,26 @@ public class PIDFController {
         lastError = 0f;
         prevMeasurement = 0f;
     }
-    public float Update(float setpoint, float actual, float deltaTime) {
-        float error = setpoint - actual;
+    public float Update(float target, float current, float deltaTime) {
+        float error = target - current;
         integral += error * deltaTime;
-        float derivative = -(actual - prevMeasurement) / deltaTime;
+        float derivative = - (current - prevMeasurement) / deltaTime;
         lastError = error;
         pVal = Kp * error;
         iVal = Ki * integral;
         dVal = Kd * derivative;
-        prevMeasurement = actual;
+        prevMeasurement = current;
+        return pVal + iVal + dVal + Kf;
+    }
+
+    public float Update(float error, float deltaTime) {
+        integral += error * deltaTime;
+        float derivative = (error - lastError) / deltaTime;
+        lastError = error;
+        pVal = Kp * error;
+        iVal = Ki * integral;
+        dVal = Kd * derivative;
+        lastError = error;
         return pVal + iVal + dVal + Kf;
     }
 }
