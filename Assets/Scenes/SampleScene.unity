@@ -367,6 +367,7 @@ MonoBehaviour:
   uiFont: {fileID: 12800000, guid: 463a6eb659483f745a2b8b8ee6562c5d, type: 3}
   uiFontSize: 20
   maxSPIncrease: 9
+  maxSPIncreaseVel: 5
   motorThrusts:
   - 0
   - 0
@@ -376,6 +377,8 @@ MonoBehaviour:
   currentRotation: {x: 0, y: 0, z: 0, w: 0}
   targetRotation: {x: 0, y: 0, z: 0, w: 0}
   targetAltitude: 1
+  targetVX: 0
+  targetVZ: 0
   rollPitchInnerPIDCoeffs:
   - 0.04
   - 0
@@ -390,6 +393,11 @@ MonoBehaviour:
   thrustPIDCoeffs:
   - 0.3
   - 0.46
+  vxzPIDCoeffs:
+  - 40
+  - 0
+  - 8
+  vxRotationPCoeff: 0.3
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
