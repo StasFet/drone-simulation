@@ -4,6 +4,11 @@ using UnityEngine.InputSystem;
 
 public class MovementScript : MonoBehaviour {
 
+	// TODO: 
+	// - rework altitude SP increase limiter into the main one
+    // - implement fit-point spline
+    // - make pathing mode
+
 	public Rigidbody rb;
 	public Transform[] motors;
 	private GUIStyle styleGreenText = new GUIStyle();
@@ -13,16 +18,16 @@ public class MovementScript : MonoBehaviour {
 	private int numMotors = 4;
     public bool showFullTelemetry = true;
     public bool showLocationTelemetry = true;
-	public float maxSPIncreaseAlt = 9f;    // setpoint ramping for altitude
-	public float maxSPIncreaseVel = 5f; // same for velocity
-    public float maxSPIcreaseLoc = 10f; // same for pos
+	public float maxSPIncreaseVel = 5f; // max SP increase rate for velocity
+    public float maxSPIcreaseLoc = 10f; // same for location
 	private float maxThrustPerMotor = 8f;
-	public bool velocityControlMode = false;
-	public bool rotationControlMode = false;
-	public bool positionControlMode = true;
+	public bool velocityControlMode = false;    // this is drone-centric
+	public bool rotationControlMode = false;    // also drone-centric
+	public bool positionControlMode = true;     // absolute
 	public float velCtrlModeMaxSpeed = 8f;
 	public float ctrlModeAscentSpeed = 0.03f;
     public float rotCtrlModeRotAmt = 25f;
+    public Transform targetTrackerObject;
 
     // state control and tracking
     private float altitude = 1f;
@@ -60,7 +65,6 @@ public class MovementScript : MonoBehaviour {
     private float targetThrustAltitude = 0f;            // the thrust needed to control altitude
     private float targetAngVelRoll = 0f;                // the angular velocity (rad) needed to control roll
     private float targetAngVelPitch = 0f;               // the angular velocity (rad) needed to control pitch
-    private float currentTargetAltitude = 1f;           // ramped setpoint
 	private float currentTargetVX = 0f;
 	private float currentTargetVZ = 0f;
     private Vector3 currentTargetLoc = new Vector3();
@@ -72,7 +76,7 @@ public class MovementScript : MonoBehaviour {
     private float vz = 0f;
 	private Vector3 targetLocationLocal = new Vector3();
 
-    private void Start() {
+	private void Start() {
 		Texture2D background = new Texture2D(1, 1);
 		background.SetPixel(0, 0, new Color(0.1f, 0.1f, 0.1f, 0.6f));
 		background.Apply();
@@ -86,6 +90,10 @@ public class MovementScript : MonoBehaviour {
 
 	// frequency = frame rate
 	void Update() {
+        if (targetTrackerObject != null) {
+            targetTrackerObject.position = targetLocation;
+        }
+
 		altitudeController.Kp = altPIDCoeffs[0];
         altitudeController.Ki = altPIDCoeffs[1];
         altitudeController.Kd = altPIDCoeffs[2];
@@ -155,7 +163,7 @@ public class MovementScript : MonoBehaviour {
 		currentLocation = rb.position;
         currentTargetLoc = new Vector3(
             rampSetpoint(currentTargetLoc.x, targetLocation.x, maxSPIcreaseLoc, Time.deltaTime),
-            targetLocation.y,
+            rampSetpoint(currentTargetLoc.y, targetLocation.y, maxSPIcreaseLoc, Time.deltaTime),
             rampSetpoint(currentTargetLoc.z, targetLocation.z, maxSPIcreaseLoc, Time.deltaTime)
         );
 		targetLocationLocal = rb.transform.InverseTransformPoint(currentTargetLoc);
@@ -176,13 +184,12 @@ public class MovementScript : MonoBehaviour {
         }
 
         // outer loops
-        targetThrustAltitude = altitudeController.Update(currentTargetAltitude, altitude, Time.deltaTime);  // outer controller 
+        targetThrustAltitude = altitudeController.Update(currentTargetLoc.y, altitude, Time.deltaTime);  // outer controller 
         errVec = makeErrorVec(targetRotation, currentRotation);
         targetAngVelRoll = rollOuterController.Update(errVec.z, Time.deltaTime);
         targetAngVelPitch = pitchOuterController.Update(errVec.x, Time.deltaTime);
 
         // setpoint ramps
-        currentTargetAltitude = rampSetpoint(currentTargetAltitude, targetAltitude, maxSPIncreaseAlt, Time.deltaTime);
 		currentTargetVX = rampSetpoint(currentTargetVX, targetVX, maxSPIncreaseVel, Time.deltaTime);
         currentTargetVZ = rampSetpoint(currentTargetVZ, targetVZ, maxSPIncreaseVel, Time.deltaTime);
 
@@ -238,7 +245,7 @@ public class MovementScript : MonoBehaviour {
             // col 2
             GUI.BeginGroup(new Rect(400, 10, 350, 90), styleGrayBG);
             GUI.Label(new Rect(10, 10, 200, 20), "Target Alt: " + targetAltitude.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 35, 200, 20), "Ramped Target Alt: " + currentTargetAltitude.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Ramped Target Alt: " + currentTargetLoc.y.ToString("F3"), styleGreenText);
             GUI.Label(new Rect(10, 60, 200, 20), "Current Alt: " + altitude.ToString("F2"), styleGreenText);
             GUI.EndGroup();
 
