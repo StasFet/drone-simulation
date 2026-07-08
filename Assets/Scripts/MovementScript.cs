@@ -5,9 +5,7 @@ using UnityEngine.InputSystem;
 public class MovementScript : MonoBehaviour {
 
 	// TODO: 
-	// - rework altitude SP increase limiter into the main one
-    // - implement fit-point spline
-    // - make pathing mode
+	// - figure out what is wrong with CatmullRomSpline.GetLocationByArcLengthNaive
 
 	public Rigidbody rb;
 	public Transform[] motors;
