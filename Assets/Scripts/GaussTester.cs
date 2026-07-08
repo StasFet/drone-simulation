@@ -9,6 +9,6 @@ public class NewMonoBehaviour : MonoBehaviour {
 
 	// Use this for initialization
 	void Start() {
-		solutions = CatmullRomSpline.GaussianElimination4(matrix, equals);
+		solutions = CatmullRomSpline.GaussianElimination4(ref matrix, ref equals);
 	}
 }

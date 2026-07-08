@@ -4,11 +4,12 @@ using UnityEngine;
 public class CatmullRomSpline {
 
 	public Vector2[] ControlPoints { get; set; }
-	private Vector3[] ctrlPtsDeriv;	// z component stores required derivative
+	private Vector3[] ctrlPtsDeriv;			// z component stores required derivative
+	public Vector4[] cubicCoeffs;			// cubicCoeffs[i] holds the coefficients for the cubic spline from ControlPoints[i] to ControlPoints[i+1]
 
 	public CatmullRomSpline() {}
 	public CatmullRomSpline (Vector2[] controlPoints) {
-		this.ControlPoints = controlPoints;
+		ControlPoints = controlPoints;
 		Fit();
 	}
 
@@ -16,9 +17,9 @@ public class CatmullRomSpline {
 		if (ControlPoints.Length < 2) return;
 		CalculateDerivatives();
 
-		for (int i = 1; i < ctrlPtsDeriv.Length - 1; i++) {
-			Vector3 p1 = ctrlPtsDeriv[i - 1];
-			Vector3 p2 = ctrlPtsDeriv[i];
+		for (int i = 0; i < ctrlPtsDeriv.Length - 1; i++) {
+			Vector4 p1 = ctrlPtsDeriv[i];
+			Vector4 p2 = ctrlPtsDeriv[i + 1];
 
 			Matrix4x4 gaussianMatrix = new Matrix4x4(
 				new Vector4(Mathf.Pow(p1.x, 3), Mathf.Pow(p1.x, 2), p1.x, 1f),
@@ -28,7 +29,8 @@ public class CatmullRomSpline {
 			);
 			Vector4 equals = new(p1.y, p2.y, p1.z, p2.z);
 
-			Vector4 coefficients = GaussianElimination4(gaussianMatrix, equals);
+			Vector4 coefficients = GaussianElimination4(ref gaussianMatrix, ref equals);
+			cubicCoeffs[i] = coefficients;
 		}
 	}
 
@@ -36,14 +38,12 @@ public class CatmullRomSpline {
 		ctrlPtsDeriv = new Vector3[ControlPoints.Length];
 
 		// DERIVATIVE CALCULATIONS
-		// first point
 		ctrlPtsDeriv[0] = new Vector3(
 			ControlPoints[0].x,
 			ControlPoints[0].y,
 			(ControlPoints[1].y - ControlPoints[0].y) / (ControlPoints[1].x - ControlPoints[0].y)
 			);
 
-		// middle points
 		for (int i = 1; i < ControlPoints.Length - 1; i++) {
 			ctrlPtsDeriv[i] = new Vector3(
 				ControlPoints[i].x,
@@ -52,7 +52,6 @@ public class CatmullRomSpline {
 			);
 		}
 
-		// last point
 		int lastIndex = ControlPoints.Length - 1;
 		ctrlPtsDeriv[lastIndex] = new Vector3(
 			ControlPoints[lastIndex].x,
@@ -62,10 +61,11 @@ public class CatmullRomSpline {
 	}
 
 	// solving a system of 4 linear equations
-	public static Vector4 GaussianElimination4(Matrix4x4 matrix, Vector4 equals) {
+	public static Vector4 GaussianElimination4(ref Matrix4x4 matrix, ref Vector4 equals) {
 		// elimination
 		for (int i = 0; i < 3; i++) {           // row at index i will do the elimating (of the elements at index i of each below row)
 			SortGaussianMatrix(ref matrix, ref equals, i);
+			// LogGaussianMatrix(matrix, equals);
 			Vector4 eliminatorRow = matrix.GetRow(i);
 			float eliminatorElement = eliminatorRow[i];
 			for (int j = i+1; j < 4; j++) {     // row at index j will have an element eliminated
@@ -81,14 +81,19 @@ public class CatmullRomSpline {
 				));
 				equals[j] -= equals[i] * coeff;
 			}
+			// LogGaussianMatrix(matrix, equals);
 		}
 
 		// solve for coefficients
-		Vector4 coeffs = new Vector4();
-		coeffs[3] = equals[3] / matrix[3, 3];
-		coeffs[2] = (equals[2] - matrix[2, 3] * coeffs[3]) / matrix[2, 2];
-		coeffs[1] = (equals[1] - matrix[1, 3] * coeffs[3] - matrix[1, 2] * coeffs[2]) / matrix[1, 1];
-		coeffs[0] = (equals[0] - matrix[0, 3] * coeffs[3] - matrix[0, 2] * coeffs[2] - matrix[0, 1] * coeffs[1]) / matrix[0, 0];
+		Vector4 coeffs = new(1f, 1f, 1f, 1f);
+
+		for (int i = 3; i >= 0; i--) {  // row iteration
+			float curr = equals[i];
+			for (int j = 3; j > i; j--) {	// element iteration
+				curr -= matrix[i, j] * coeffs[j];
+			}
+			coeffs[i] = curr / matrix[i, i];
+		}
 		return coeffs;
 	}
 
@@ -100,7 +105,8 @@ public class CatmullRomSpline {
 			for (int j = 0; j < 4; j++) {
 				if (row[j] == 0f) {
 					leadingZeros[i]++;
-					continue;
+				} else {
+					break;
 				}
 			}
 		}
@@ -123,5 +129,18 @@ public class CatmullRomSpline {
 				}
 			}
 		}
+	}
+
+	private static void LogGaussianMatrix(Matrix4x4 m, Vector4 v) {
+		string total = "";
+		for (int i = 0; i < 4; i++) {
+			string row = "| ";
+			for (int j = 0; j < 4; j++) {
+				row += m.GetRow(i)[j].ToString("F2") + ", ";
+			}
+			row += "| " + v[i].ToString("F2") + " |\n";
+			total += row;
+		}
+		Debug.Log(total);
 	}
 }
