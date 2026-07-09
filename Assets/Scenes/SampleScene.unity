@@ -431,9 +431,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3342a1acca5f78c4cb32c09761d63026, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NewMonoBehaviour
-  solutions: {x: 0, y: 0, z: 0, w: 0}
-  pointA: {x: 0, y: 0}
-  pointB: {x: 0, y: 2}
+  pointA: {x: 0, y: 0, z: 0}
+  pointB: {x: 0, y: 2, z: 0}
 --- !u!4 &241480092
 Transform:
   m_ObjectHideFlags: 0
@@ -1369,15 +1368,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   material: {fileID: 2100000, guid: 860a04247467d1040bc694441c2a272e, type: 2}
   colour: {r: 0, g: 1, b: 0.9436169, a: 0}
-  width: 0.03
+  width: 0.02
   segmentLength: 0.1
   refreshRate: 5
   controlPoints:
-  - {x: 0, y: 1}
-  - {x: 1, y: 2}
-  - {x: 3, y: -1}
-  - {x: 4.68, y: 1.98}
-  y: 0.5
+  - {x: 0, y: 1, z: 0}
+  - {x: 1, y: 1, z: 1}
+  - {x: 3, y: 3, z: -4}
+  - {x: -4, y: 2, z: 3}
 --- !u!1 &2117233816
 GameObject:
   m_ObjectHideFlags: 0

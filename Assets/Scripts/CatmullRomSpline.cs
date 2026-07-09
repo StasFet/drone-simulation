@@ -5,13 +5,15 @@ using UnityEngine;
 
 public class CatmullRomSpline {
 
-	public Vector2[] ControlPoints { get; set; }
-	private Vector2[] ctrlPtsDeriv;				// z component stores required derivative
+	public Vector3[] ControlPoints { get; set; }
+	private Vector3[] ctrlPtsDeriv;				// z component stores required derivative
 	private Func<float, float>[] segmentFunctionsX;
 	private Func<float, float>[] segmentFunctionsY;
+	private Func<float, float>[] segmentFunctionsZ;
 	private Func<float, float>[] segmentFunctionsXPrime;
 	private Func<float, float>[] segmentFunctionsYPrime;
-	private static float IntegralSamples = 1000f;
+	private Func<float, float>[] segmentFunctionsZPrime;
+	private static float IntegralSamples = 500f;
 	public float SplineLength;
 	private float[] cumSegmentArcLengths;	// cumSegmentArcLengths[i] holds the arc length of all segments until ControlPoints[i]
 	private float[] segmentArcLengths;      // segmentsArcLengths[i] is the arc length of the segment between ControlPoints[i] and ControlPoints[i+1]
@@ -19,7 +21,7 @@ public class CatmullRomSpline {
 	private int nSegments;
 
 	public CatmullRomSpline() {}
-	public CatmullRomSpline (Vector2[] controlPoints) {
+	public CatmullRomSpline (Vector3[] controlPoints) {
 		ControlPoints = controlPoints;
 		nPoints = ControlPoints.Length;
 		nSegments = nPoints - 1;
@@ -35,8 +37,10 @@ public class CatmullRomSpline {
 		// Debug.Log($"Calculated Derivatives: \n{ctrlPtsDeriv[0]}\n{ctrlPtsDeriv[1]}");
 		segmentFunctionsX = new Func<float, float>[nSegments];
 		segmentFunctionsY = new Func<float, float>[nSegments];
+		segmentFunctionsZ = new Func<float, float>[nSegments];
 		segmentFunctionsXPrime = new Func<float, float>[nSegments];
 		segmentFunctionsYPrime = new Func<float, float>[nSegments];
+		segmentFunctionsZPrime = new Func<float, float>[nSegments];
 
 		for (int i = 0; i < nSegments; i++) {
 			Vector4 p1 = ControlPoints[i];
@@ -46,15 +50,19 @@ public class CatmullRomSpline {
 
 			Vector4 equalsX = new(p1.x, p2.x, m1.x, m2.x);
 			Vector4 equalsY = new(p1.y, p2.y, m1.y, m2.y);
+			Vector4 equalsZ = new(p1.z, p2.z, m1.z, m2.z);
 
 			Vector4 coefficientsX = CalculateCoefficients(equalsX);
 			Vector4 coefficientsY = CalculateCoefficients(equalsY);
+			Vector4 coefficientsZ = CalculateCoefficients(equalsZ);
 			//Debug.Log($"x(t) = {coefficientsX[0]}x^3 + {coefficientsX[1]}x^2 + {coefficientsX[2]}x + {coefficientsX[3]}\n" +
 			//	$"y(t) = {coefficientsY[0]}y^3 + {coefficientsY[1]}y^2 + {coefficientsY[2]}y + {coefficientsY[3]}");
-			segmentFunctionsX[i] = x => coefficientsX[0] * Mathf.Pow(x, 3) + coefficientsX[1] * Mathf.Pow(x, 2) + coefficientsX[2] * x + coefficientsX[3];
-			segmentFunctionsY[i] = y => coefficientsY[0] * Mathf.Pow(y, 3) + coefficientsY[1] * Mathf.Pow(y, 2) + coefficientsY[2] * y + coefficientsY[3];
-			segmentFunctionsXPrime[i] = x => 3f * coefficientsX[0] * Mathf.Pow(x, 2) + 2f * coefficientsX[1] * x + coefficientsX[2];
-			segmentFunctionsYPrime[i] = y => 3f * coefficientsY[0] * Mathf.Pow(y, 2) + 2f * coefficientsY[1] * y + coefficientsY[2];
+			segmentFunctionsX[i] = t => coefficientsX[0] * Mathf.Pow(t, 3) + coefficientsX[1] * Mathf.Pow(t, 2) + coefficientsX[2] * t + coefficientsX[3];
+			segmentFunctionsY[i] = t => coefficientsY[0] * Mathf.Pow(t, 3) + coefficientsY[1] * Mathf.Pow(t, 2) + coefficientsY[2] * t + coefficientsY[3];
+			segmentFunctionsZ[i] = t => coefficientsZ[0] * Mathf.Pow(t, 3) + coefficientsZ[1] * Mathf.Pow(t, 2) + coefficientsZ[2] * t + coefficientsZ[3];
+			segmentFunctionsXPrime[i] = t => 3f * coefficientsX[0] * Mathf.Pow(t, 2) + 2f * coefficientsX[1] * t + coefficientsX[2];
+			segmentFunctionsYPrime[i] = t => 3f * coefficientsY[0] * Mathf.Pow(t, 2) + 2f * coefficientsY[1] * t + coefficientsY[2];
+			segmentFunctionsZPrime[i] = t => 3f * coefficientsZ[0] * Mathf.Pow(t, 2) + 2f * coefficientsZ[1] * t + coefficientsZ[2];
 			//Debug.Log($"Coefficients between p{i} and p{i + 1}: {coefficients.ToString("F4")}");
 		}
 
@@ -62,7 +70,7 @@ public class CatmullRomSpline {
 	}
 
 	private void CalculateDerivatives() {
-		ctrlPtsDeriv = new Vector2[ControlPoints.Length];
+		ctrlPtsDeriv = new Vector3[ControlPoints.Length];
 
 		// DERIVATIVE CALCULATIONS
 		ctrlPtsDeriv[0] = (ControlPoints[1] - ControlPoints[0]) / 2f;
@@ -81,7 +89,7 @@ public class CatmullRomSpline {
 		SplineLength = 0f;
 		cumLengths[0] = 0;
 		for (int i = 0; i < ctrlPtsDeriv.Length - 1; i++) {
-			float arcLength = ArcLength(segmentFunctionsXPrime[i], segmentFunctionsYPrime[i]);
+			float arcLength = ArcLength(segmentFunctionsXPrime[i], segmentFunctionsYPrime[i], segmentFunctionsZPrime[i]);
 			SplineLength += arcLength;
 			lengths[i] = arcLength;
 			cumLengths[i + 1] = SplineLength;
@@ -90,7 +98,7 @@ public class CatmullRomSpline {
 		segmentArcLengths = lengths;
 	}
 
-	public Vector2 GetLocationByArcLengthNewton(float arcLength) {
+	public Vector3 GetLocationByArcLengthNewton(float arcLength) {
 		// binary search to find the segment within which this arcLength lies
 		int left = 0;
 		int right = segmentArcLengths.Length;
@@ -111,9 +119,13 @@ public class CatmullRomSpline {
 		if (cumSegmentArcLengths[pointIndex] == arcLength) return ControlPoints[pointIndex];   // if the requested arc length is a full number of bluds
 		float lengthRemainder = arcLength - cumSegmentArcLengths[pointIndex - 1];
 		float guess = lengthRemainder / segmentArcLengths[pointIndex - 1];
-		Func<float, float> speed = t => Mathf.Sqrt(Mathf.Pow(segmentFunctionsXPrime[pointIndex - 1](t), 2) + Mathf.Pow(segmentFunctionsYPrime[pointIndex - 1](t), 2));
+		Func<float, float> speed = t => Mathf.Sqrt(
+			Mathf.Pow(segmentFunctionsXPrime[pointIndex - 1](t), 2) + 
+			Mathf.Pow(segmentFunctionsYPrime[pointIndex - 1](t), 2) +
+			Mathf.Pow(segmentFunctionsZPrime[pointIndex - 1](t), 2)
+		);
 		float tVal = SolveUpperBound(speed, lengthRemainder, guess) * (lengthRemainder / segmentArcLengths[pointIndex - 1]);
-		return new Vector2(segmentFunctionsX[pointIndex - 1](tVal), segmentFunctionsY[pointIndex - 1](tVal));
+		return new Vector3(segmentFunctionsX[pointIndex - 1](tVal), segmentFunctionsY[pointIndex - 1](tVal), segmentFunctionsZ[pointIndex - 1](tVal));
 	}
 
 	// solving a system of 4 linear equations
@@ -210,14 +222,13 @@ public class CatmullRomSpline {
 		Debug.Log(total);
 	}
 
-	public static float ArcLength(Func<float, float> dxdt, Func<float, float> dydt) {
+	public static float ArcLength(Func<float, float> dxdt, Func<float, float> dydt, Func<float, float> dzdt) {
 		float stepSize = 1f / IntegralSamples;
 
 		float integral = 0;
 		for (float i = 0; i < 1f; i += stepSize) {
-			integral += stepSize * Mathf.Sqrt(Mathf.Pow(dxdt(i), 2) + Mathf.Pow(dydt(i), 2));
+			integral += stepSize * Mathf.Sqrt(Mathf.Pow(dxdt(i), 2) + Mathf.Pow(dydt(i), 2) + Mathf.Pow(dzdt(i), 2));
 		}
-
 		return Mathf.Abs(integral);
 	}
 

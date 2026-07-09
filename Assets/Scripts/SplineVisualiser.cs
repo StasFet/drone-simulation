@@ -8,8 +8,7 @@ public class SplineVisualiser : MonoBehaviour {
     public float segmentLength = 0.1f;
     public float refreshRate = 5f;
     private float dt = 0f;
-	public Vector2[] controlPoints;
-	public float y;
+	public Vector3[] controlPoints;
     private LineRenderer lr;
 
     void Start() {   
@@ -32,8 +31,7 @@ public class SplineVisualiser : MonoBehaviour {
 			lr.positionCount = Mathf.FloorToInt(spline.SplineLength / segmentLength);
 
 			for (int i = 0; i < lr.positionCount; i++) {
-				Vector2 point = spline.GetLocationByArcLengthNewton(i * segmentLength);
-				lr.SetPosition(i, new Vector3(point.x, y, point.y));
+				lr.SetPosition(i, spline.GetLocationByArcLengthNewton(i * segmentLength));
 				// Debug.Log($"Point at AL = {i * segmentLength}: {point}");
 			}
 		}
