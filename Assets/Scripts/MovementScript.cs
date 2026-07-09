@@ -6,6 +6,7 @@ public class MovementScript : MonoBehaviour {
 
 	// TODO: 
 	// - figure out what is wrong with CatmullRomSpline.GetLocationByArcLengthNaive
+    // - test for x1 > x2
 
 	public Rigidbody rb;
 	public Transform[] motors;

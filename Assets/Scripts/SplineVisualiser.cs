@@ -24,7 +24,7 @@ public class SplineVisualiser : MonoBehaviour {
         lineRenderer.positionCount = Mathf.FloorToInt(spline.SplineLength / segmentLength);
 
         for (int i = 0; i < lineRenderer.positionCount; i++) {
-            Vector2 point = spline.GetLocationByArcLengthNaive(i * segmentLength);
+            Vector2 point = spline.GetLocationByArcLengthNewton(i * segmentLength);
             lineRenderer.SetPosition(i, new Vector3(point.x, y, point.y));
             Debug.Log("Drew new point at: " + point);
         }

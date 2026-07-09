@@ -450,8 +450,8 @@ MonoBehaviour:
     e33: 0
   equals: {x: 1, y: 1, z: 0, w: -2}
   solutions: {x: 0, y: 0, z: 0, w: 0}
-  pointA: {x: 0, y: 1}
-  pointB: {x: 1, y: 2}
+  pointA: {x: 0, y: 0}
+  pointB: {x: 1, y: 0}
 --- !u!4 &241480092
 Transform:
   m_ObjectHideFlags: 0
@@ -1387,11 +1387,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   material: {fileID: 2100000, guid: 860a04247467d1040bc694441c2a272e, type: 2}
   colour: {r: 0, g: 1, b: 0.9436169, a: 0}
-  width: 0.1
-  segmentLength: 0.1
+  width: 0.03
+  segmentLength: 0.02
   controlPoints:
   - {x: 0, y: 1}
   - {x: 1, y: 2}
+  - {x: 3, y: -1}
+  - {x: 4, y: 3}
   y: 0.5
 --- !u!1 &2117233816
 GameObject:
