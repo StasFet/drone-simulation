@@ -1388,12 +1388,13 @@ MonoBehaviour:
   material: {fileID: 2100000, guid: 860a04247467d1040bc694441c2a272e, type: 2}
   colour: {r: 0, g: 1, b: 0.9436169, a: 0}
   width: 0.03
-  segmentLength: 0.02
+  segmentLength: 0.1
+  refreshRate: 5
   controlPoints:
   - {x: 0, y: 1}
   - {x: 1, y: 2}
   - {x: 3, y: -1}
-  - {x: 4, y: 3}
+  - {x: 4.68, y: 1.98}
   y: 0.5
 --- !u!1 &2117233816
 GameObject:

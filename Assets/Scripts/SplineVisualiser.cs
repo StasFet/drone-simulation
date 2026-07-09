@@ -6,27 +6,36 @@ public class SplineVisualiser : MonoBehaviour {
     public Color colour;
     public float width;
     public float segmentLength = 0.1f;
+    public float refreshRate = 5f;
+    private float dt = 0f;
 	public Vector2[] controlPoints;
 	public float y;
+    private LineRenderer lr;
 
-    void Start() {
-        CatmullRomSpline spline = new CatmullRomSpline(controlPoints);
-        Debug.Log("spline length is " + spline.SplineLength);
+    void Start() {   
+        lr = gameObject.AddComponent<LineRenderer>();
+        lr.material = new Material(material);
+		lr.startColor = colour;
+		lr.endColor = lr.startColor;
 
-        LineRenderer lineRenderer = gameObject.AddComponent<LineRenderer>();
-        lineRenderer.material = new Material(material);
-        lineRenderer.startColor = colour;
-        lineRenderer.endColor = lineRenderer.startColor;
-
-        lineRenderer.startWidth = width;
-        lineRenderer.endWidth = lineRenderer.startWidth;
-
-        lineRenderer.positionCount = Mathf.FloorToInt(spline.SplineLength / segmentLength);
-
-        for (int i = 0; i < lineRenderer.positionCount; i++) {
-            Vector2 point = spline.GetLocationByArcLengthNewton(i * segmentLength);
-            lineRenderer.SetPosition(i, new Vector3(point.x, y, point.y));
-            Debug.Log("Drew new point at: " + point);
-        }
+		lr.startWidth = width;
+		lr.endWidth = lr.startWidth;
     }
+
+	private void Update () {
+        dt += Time.deltaTime;
+        if (dt > 1f / refreshRate) {
+            dt = 0;
+			CatmullRomSpline spline = new CatmullRomSpline(controlPoints);
+			//Debug.Log("spline length is " + spline.SplineLength);
+			lr.positionCount = 0;
+			lr.positionCount = Mathf.FloorToInt(spline.SplineLength / segmentLength);
+
+			for (int i = 0; i < lr.positionCount; i++) {
+				Vector2 point = spline.GetLocationByArcLengthNewton(i * segmentLength);
+				lr.SetPosition(i, new Vector3(point.x, y, point.y));
+				// Debug.Log($"Point at AL = {i * segmentLength}: {point}");
+			}
+		}
+	}
 }
