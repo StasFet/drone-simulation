@@ -16,10 +16,9 @@ public class SplineVisualiser : MonoBehaviour {
         lr.material = new Material(material);
 		lr.startColor = colour;
 		lr.endColor = lr.startColor;
-
 		lr.startWidth = width;
 		lr.endWidth = lr.startWidth;
-    }
+	}
 
 	private void Update () {
         dt += Time.deltaTime;

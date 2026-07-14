@@ -364,6 +364,7 @@ MonoBehaviour:
   - {fileID: 66429425}
   - {fileID: 890671536}
   - {fileID: 1064847447}
+  motorSpinDirection: ffffffff0100000001000000ffffffff
   uiFont: {fileID: 12800000, guid: 463a6eb659483f745a2b8b8ee6562c5d, type: 3}
   uiFontSize: 20
   showFullTelemetry: 1
@@ -376,6 +377,9 @@ MonoBehaviour:
   velCtrlModeMaxSpeed: 20
   ctrlModeAscentSpeed: 0.03
   rotCtrlModeRotAmt: 25
+  thrustToOmegaCoeff: 1
+  omegaToReactionCoeff: 0.02
+  yawSpeed: 0.35
   targetTrackerObject: {fileID: 0}
   targetLocation: {x: 0, y: 1, z: 0}
   rollPitchInnerPIDCoeffs:
@@ -385,6 +389,10 @@ MonoBehaviour:
   - 10
   - 0
   - 2
+  yawPIDCoeffs:
+  - 0.2
+  - 0
+  - 0.05
   altPIDCoeffs:
   - 20
   - 0
