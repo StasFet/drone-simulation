@@ -33,8 +33,6 @@ public class MovementScript : MonoBehaviour {
 
     // state control and tracking
     private float altitude = 1f;
-    private Quaternion currentRotation = new Quaternion();
-	private Quaternion targetRotation = new Quaternion();
 	private Vector3 currentLocation = new Vector3();
     public Vector3 targetLocation = new Vector3(0f, 1f, 0f);
     private float[] motorOmega = { 0f, 0f, 0f, 0f };
@@ -72,15 +70,21 @@ public class MovementScript : MonoBehaviour {
     private float targetAngVelRoll = 0f;                // the angular velocity (rad) needed to control roll
     private float targetAngVelPitch = 0f;               // the angular velocity (rad) needed to control pitch
 	private float targetAngVelYaw = 0f;
-	private float currentTargetVX = 0f;
-	private float currentTargetVZ = 0f;
     private Vector3 currentTargetLoc = new Vector3();
-	private float targetRotationX = 0f;					// the rotation (roll) required to achieve the desired vx (left/right)
-	private float targetRotationZ = 0f;                 // the rotation (pitch) required to achieve the desired vz (forwards/backwards)
-    private Vector3 targetVelocity = new(0f, 0f, 0f);
-    private float vx = 0f;
-    private float vz = 0f;
 	private Vector3 targetLocationLocal = new Vector3();
+
+    // everything that is relative to the drone or to the world
+    private Vector3 omegaWorld;
+    private Vector3 omegaBody;
+    private Quaternion rotationWorld;
+    private Quaternion rotationBody;
+    private Quaternion targetRotationWorld;
+    private Vector3 linearVelocityWorld;
+    private Vector3 linearVelocityBody;
+    private Vector3 targetLinVelWorld;
+    private Vector3 targetLinVelBody;
+    private Vector3 currTargetLinVelWorld;
+	private Vector3 currTargetLinVelBody;
 
 	private void Start() {
 		Texture2D background = new Texture2D(1, 1);
@@ -135,23 +139,20 @@ public class MovementScript : MonoBehaviour {
         zController.Ki = xzPIDCoeffs[1];
         zController.Kd = xzPIDCoeffs[2];
 
-        float yaw = currentRotation.eulerAngles.y;
+        float yaw = rotationWorld.eulerAngles.y;
         if (velocityControlMode) {
             // velocity
             if (Keyboard.current.wKey.isPressed) {
-                targetVelocity.z = Mathf.Cos(yaw) * velCtrlModeMaxSpeed;
-                targetVelocity.x = Mathf.Sin(yaw) * velCtrlModeMaxSpeed;
+                targetLinVelBody.z = velCtrlModeMaxSpeed;
             } else if (Keyboard.current.sKey.isPressed) {
-                targetVelocity.z = Mathf.Cos(yaw) * -velCtrlModeMaxSpeed;
-                targetVelocity.x = Mathf.Sin(yaw) * -velCtrlModeMaxSpeed;
+				targetLinVelBody.z = -velCtrlModeMaxSpeed;
             } else {
-				targetVelocity.z = 0f;
-                targetVelocity.x = 0f;
+				targetLinVelBody.z = 0f;
 			}
             
-            if (Keyboard.current.dKey.isPressed) targetVelocity.x = Mathf.Cos(yaw) * velCtrlModeMaxSpeed;
-            else if (Keyboard.current.aKey.isPressed) targetVelocity.x = Mathf.Cos(yaw) * -velCtrlModeMaxSpeed;
-            else targetVelocity.x = 0f;
+            if (Keyboard.current.dKey.isPressed) targetLinVelBody.x = velCtrlModeMaxSpeed;
+            else if (Keyboard.current.aKey.isPressed) targetLinVelBody.x = -velCtrlModeMaxSpeed;
+            else targetLinVelBody.x = 0f;
 
 			// altitude
             if (Keyboard.current.spaceKey.isPressed) targetLocation.y += ctrlModeAscentSpeed;
@@ -162,11 +163,11 @@ public class MovementScript : MonoBehaviour {
             else if (Keyboard.current.qKey.isPressed) targetAngVelYaw = -yawSpeed;
             else targetAngVelYaw = 0f;
 		} else if (rotationControlMode) {
-            targetRotation = Quaternion.Euler(0f, 0f, 0f);
-            if (Keyboard.current.wKey.isPressed) targetRotation = Quaternion.Euler(rotCtrlModeRotAmt, 0f, 0f);
-            else if (Keyboard.current.sKey.isPressed) targetRotation = Quaternion.Euler(-rotCtrlModeRotAmt, 0f, 0f);
-            if (Keyboard.current.aKey.isPressed) targetRotation = Quaternion.Euler(0f, 0f, rotCtrlModeRotAmt) * targetRotation;
-            else if (Keyboard.current.dKey.isPressed) targetRotation = Quaternion.Euler(0f, 0f, -rotCtrlModeRotAmt) * targetRotation;
+			targetRotationWorld = Quaternion.Euler(0f, 0f, 0f);
+            if (Keyboard.current.wKey.isPressed) targetRotationWorld = Quaternion.Euler(rotCtrlModeRotAmt, 0f, 0f);
+            else if (Keyboard.current.sKey.isPressed) targetRotationWorld = Quaternion.Euler(-rotCtrlModeRotAmt, 0f, 0f);
+            if (Keyboard.current.aKey.isPressed) targetRotationWorld = Quaternion.Euler(0f, 0f, rotCtrlModeRotAmt);
+            else if (Keyboard.current.dKey.isPressed) targetRotationWorld = Quaternion.Euler(0f, 0f, -rotCtrlModeRotAmt);
 
 			// altitude
 			if (Keyboard.current.spaceKey.isPressed) targetLocation.y += ctrlModeAscentSpeed;
@@ -187,16 +188,21 @@ public class MovementScript : MonoBehaviour {
         float dt = Time.deltaTime;
         // state updates
         altitude = rb.position.y;
-        currentRotation = rb.rotation;
-		vx = rb.linearVelocity.x;
-		vz = rb.linearVelocity.z;
+        linearVelocityWorld = rb.linearVelocity;
 		currentLocation = rb.position;
+        rotationWorld = rb.rotation;
         currentTargetLoc = new Vector3(
             rampSetpoint(currentTargetLoc.x, targetLocation.x, maxSPIcreaseLoc, dt),
             rampSetpoint(currentTargetLoc.y, targetLocation.y, maxSPIcreaseLoc, dt),
             rampSetpoint(currentTargetLoc.z, targetLocation.z, maxSPIcreaseLoc, dt)
         );
 		targetLocationLocal = rb.transform.InverseTransformPoint(currentTargetLoc);
+        omegaWorld = rb.angularVelocity;
+        omegaBody = Quaternion.Inverse(rotationWorld) * omegaWorld;
+        targetLinVelWorld = rotationWorld * targetLinVelBody;
+
+		// convert all body-relative figures to world-relative
+		targetLinVelWorld = Quaternion.Inverse(rotationWorld) * targetLinVelBody;
 
         // calculate equivalent RPMs
         for (int i = 0; i < numMotors; i++) {
@@ -205,35 +211,48 @@ public class MovementScript : MonoBehaviour {
 
 		// super super outer loops (target location -> target velocity)
         if (positionControlMode) {
-            targetVelocity.z = xzLocCoeff * zController.Update(targetLocationLocal.z, 0, dt);   // location error compared as local
-            targetVelocity.x = xzLocCoeff * xController.Update(targetLocationLocal.x, 0, dt);
+            targetLinVelWorld.z = xzLocCoeff * zController.Update(targetLocationLocal.z, 0, dt);   // location error compared as local
+            targetLinVelWorld.x = xzLocCoeff * xController.Update(targetLocationLocal.x, 0, dt);
         }
          
 		// super outer loops (target velocity -> target rotation)
         if (positionControlMode || velocityControlMode){
-            float cmdX = vxController.Update(currentTargetVX, vx, dt);
-            float cmdZ = vzController.Update(currentTargetVZ, vz, dt);
+            float cmdX = vxController.Update(currTargetLinVelWorld.x, linearVelocityWorld.x, dt);
+            float cmdZ = vzController.Update(currTargetLinVelWorld.z, linearVelocityWorld.z, dt);
 
-            float yawDeg = target
+            float yawDeg = targetRotationWorld.y;
+            Vector3 cmdWorld = new Vector3(cmdX, 0f, cmdZ);
+            Vector3 cmdHeading = Quaternion.AngleAxis(-yawDeg, Vector3.up) * cmdWorld;
+
+            Quaternion qTilt = Quaternion.Euler(
+                vxRotationPCoeff * cmdHeading.z,
+                0f,
+                vxRotationPCoeff * -cmdHeading.x
+            );
+
+            Quaternion qYaw = Quaternion.AngleAxis(yawDeg, Vector3.up);
+            targetRotationWorld = qYaw * qTilt;
+            //Debug.Log(targetRotationWorld.eulerAngles);
         }
 
-
-
         // outer loops
-        targetThrustAltitude = altitudeController.Update(currentTargetLoc.y, altitude, dt);  // outer controller 
-        errVec = makeErrorVec(targetRotation, currentRotation);
+        targetThrustAltitude = altitudeController.Update(currentTargetLoc.y, altitude, dt);  // outer controller
+        errVec = makeErrorVec(targetRotationWorld, rotationWorld);
         targetAngVelRoll = rollOuterController.Update(errVec.z, dt);
         targetAngVelPitch = pitchOuterController.Update(errVec.x, dt);
+        Debug.Log($"target rotation: {targetRotationWorld}");
+		Debug.Log($"rotation: {rotationWorld}");
+		Debug.Log($"error: {errVec}");
 
         // setpoint ramps
-		currentTargetVX = rampSetpoint(currentTargetVX, targetVelocity.x, maxSPIncreaseVel, dt);
-        currentTargetVZ = rampSetpoint(currentTargetVZ, targetVelocity.z, maxSPIncreaseVel, dt);
+		currTargetLinVelWorld.x = rampSetpoint(currTargetLinVelWorld.x, targetLinVelWorld.x, maxSPIncreaseVel, dt);
+        currTargetLinVelWorld.z = rampSetpoint(currTargetLinVelWorld.z, targetLinVelWorld.z, maxSPIncreaseVel, dt);
 
 		// inner loops
 		float altitudePIDCalc = thrustController.Update(targetThrustAltitude, motorThrusts.Sum() / 4f, dt);
-		rollPIDCalc = rollInnerController.Update(targetAngVelRoll, rb.angularVelocity.z, dt);
-		pitchPIDCalc = pitchInnerController.Update(targetAngVelPitch, rb.angularVelocity.x, dt);
-        yawPIDCalc = yawController.Update(targetAngVelYaw, rb.angularVelocity.y, dt);
+		rollPIDCalc = rollInnerController.Update(targetAngVelRoll, omegaWorld.z, dt);
+		pitchPIDCalc = pitchInnerController.Update(targetAngVelPitch, omegaWorld.x, dt);
+        yawPIDCalc = yawController.Update(targetAngVelYaw, omegaWorld.y, dt);
 		motorThrusts[0] = Mathf.Max(0f, Mathf.Min(1f, altitudePIDCalc + rollPIDCalc - pitchPIDCalc + yawPIDCalc * motorSpinDirection[0]));
         motorThrusts[1] = Mathf.Max(0f, Mathf.Min(1f, altitudePIDCalc - rollPIDCalc - pitchPIDCalc + yawPIDCalc * motorSpinDirection[1]));
         motorThrusts[2] = Mathf.Max(0f, Mathf.Min(1f, altitudePIDCalc + rollPIDCalc + pitchPIDCalc + yawPIDCalc * motorSpinDirection[2]));
@@ -263,27 +282,27 @@ public class MovementScript : MonoBehaviour {
             GUI.EndGroup();
 
             GUI.BeginGroup(new Rect(10, 200, 350, 140), styleGrayBG);
-            GUI.Label(new Rect(10, 10, 200, 20), "Roll: " + currentRotation.eulerAngles.z.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 35, 200, 20), "Pitch: " + currentRotation.eulerAngles.x.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 60, 200, 20), "Yaw: " + currentRotation.eulerAngles.y.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 85, 200, 20), "Target Pitch: " + targetRotationZ.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 110, 200, 20), "Target Roll: " + targetRotationX.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 10, 200, 20), "Roll: " + rotationWorld.eulerAngles.z.ToString("F4"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Pitch: " + rotationWorld.eulerAngles.x.ToString("F4"), styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "Yaw: " + rotationWorld.eulerAngles.y.ToString("F4"), styleGreenText);
+            GUI.Label(new Rect(10, 85, 200, 20), "Target Pitch: " + targetRotationWorld.x.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 110, 200, 20), "Target Roll: " + targetRotationWorld.z.ToString("F2"), styleGreenText);
             GUI.EndGroup();
 
             GUI.BeginGroup(new Rect(10, 360, 350, 90), styleGrayBG);
-            GUI.Label(new Rect(10, 10, 200, 20), "RollErr (rad): " + errVec.z.ToString("F3"), styleGreenText);
-            GUI.Label(new Rect(10, 35, 200, 20), "PitchErr (rad): " + errVec.x.ToString("F3"), styleGreenText);
-            GUI.Label(new Rect(10, 60, 200, 20), "YawErr (rad): " + errVec.y.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 10, 200, 20), "RollErr: " + errVec.z, styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "PitchErr: " + errVec.x, styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "YawErr: " + errVec.y, styleGreenText);
             GUI.EndGroup();
 
             GUI.BeginGroup(new Rect(10, 460, 350, 70), styleGrayBG);
-            GUI.Label(new Rect(10, 10, 200, 20), "Roll Target AngVel: " + targetAngVelRoll.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 35, 200, 20), "Pitch Target AngVel: " + targetAngVelPitch.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 10, 200, 20), "Roll Target AngVel: " + targetAngVelRoll.ToString("F4"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Pitch Target AngVel: " + targetAngVelPitch.ToString("F4"), styleGreenText);
             GUI.EndGroup();
 
             GUI.BeginGroup(new Rect(10, 550, 350, 70), styleGrayBG);
-            GUI.Label(new Rect(10, 10, 200, 20), "Roll Thrust: " + rollPIDCalc.ToString("F3"), styleGreenText);
-            GUI.Label(new Rect(10, 35, 200, 20), "Pitch Thrust: " + pitchPIDCalc.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 10, 200, 20), "Roll PID Calc: " + rollPIDCalc.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "Pitch PID Calc: " + pitchPIDCalc.ToString("F3"), styleGreenText);
             GUI.EndGroup();
 
 			GUI.BeginGroup(new Rect(10, 650, 350, 115), styleGrayBG);
@@ -300,12 +319,12 @@ public class MovementScript : MonoBehaviour {
             GUI.EndGroup();
 
             GUI.BeginGroup(new Rect(400, 120, 350, 170), styleGrayBG);
-            GUI.Label(new Rect(10, 10, 200, 20), "vx: " + vx.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 35, 200, 20), "vz: " + vz.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 60, 200, 20), "target vx: " + targetVelocity.x.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 85, 200, 20), "target vz: " + targetVelocity.z.ToString("F2"), styleGreenText);
-            GUI.Label(new Rect(10, 110, 200, 20), "ramped target vx: " + currentTargetVX.ToString("F3"), styleGreenText);
-            GUI.Label(new Rect(10, 135, 200, 20), "ramped target vz: " + currentTargetVZ.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 10, 200, 20), "vx: " + linearVelocityWorld.x.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 35, 200, 20), "vz: " + linearVelocityWorld.z.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 60, 200, 20), "target vx: " + targetLinVelWorld.x.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 85, 200, 20), "target vz: " + targetLinVelWorld.z.ToString("F2"), styleGreenText);
+            GUI.Label(new Rect(10, 110, 200, 20), "ramped target vx: " + currTargetLinVelWorld.x.ToString("F3"), styleGreenText);
+            GUI.Label(new Rect(10, 135, 200, 20), "ramped target vz: " + currTargetLinVelWorld.z.ToString("F3"), styleGreenText);
             GUI.EndGroup();
 
 			GUI.BeginGroup(new Rect(400, 320, 350, 170), styleGrayBG);
@@ -345,7 +364,8 @@ public class MovementScript : MonoBehaviour {
 		if (Quaternion.Dot(target, current) < 0f) target = Negate(target); // ensure it takes the shortest path
 		Quaternion err = Quaternion.Inverse(current) * target;
 		err.ToAngleAxis(out float angle, out Vector3 axis);
-		if (angle > 180f) angle -= 360f;
+        if (angle > 180f) angle -= 360f;
+        //else if (angle < 1e-4f) return Vector3.zero;
 		return axis.normalized * angle * Mathf.Deg2Rad;     // stores 
 	}
 
